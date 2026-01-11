@@ -1,6 +1,6 @@
 'use client';
 
-import { useChat, type Message } from 'ai/react';
+import { useChat, type Message } from '@ai-sdk/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type DbMessage = {
@@ -22,8 +22,20 @@ export function Chat() {
   const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } =
     useChat({
       api: '/api/chat',
-      // Include the sessionId with every request to the chat endpoint.
-      body: sessionId ? { sessionId } : undefined
+      /**
+       * Our backend contract is intentionally simple:
+       *   { sessionId, message }
+       *
+       * `useChat` normally sends a richer payload (messages, id, etc),
+       * so we adapt it here to match the required shape.
+       */
+      experimental_prepareRequestBody: ({ messages }) => {
+        const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content;
+        return {
+          sessionId,
+          message: lastUserMessage ?? ''
+        };
+      }
     });
 
   const isReady = useMemo(() => Boolean(sessionId) && !isBooting, [sessionId, isBooting]);
